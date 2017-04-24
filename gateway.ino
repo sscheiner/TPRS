@@ -99,7 +99,7 @@ Node self;
 NodeList childList;
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
-const int layer = 0; //gateway is always layer 0 in the tree mesh
+const uint8_t layer = 0; //gateway is always layer 0 in the tree mesh
 
 void setup() 
 {
@@ -151,50 +151,57 @@ void loop() {
 
   
   delay(1000);  // Wait 1 second between transmits, could also 'sleep' here!
+  handshake();
   
-  //always send out handshake with layer data first
-  String layerInfo = String(layer);
-  //handshake always starts with init
-  String radiopacketstring = ("init" + layerInfo);
-  char sendBuffer[RH_RF69_MAX_MESSAGE_LEN];
-  uint8_t messageLength = sizeof(sendBuffer);
-  //convert string to char array to be sent
-  radiopacketstring.toCharArray(sendBuffer, messageLength);
-
-  //print handshake data being sent 
-  Serial.print("Sending "); Serial.println(sendBuffer);
-  
-  // cast as unsigned 8 bit integer and send
-  rf69.send((uint8_t *)sendBuffer, strlen(sendBuffer));
-  rf69.waitPacketSent();
-
-  // Now wait for a reply
-  uint8_t receiveBuffer[RH_RF69_MAX_MESSAGE_LEN];
-  
-
-  if (rf69.waitAvailableTimeout(500))  { 
-    // Should be a reply message for us now 
-	//check that it has been received 
-    if (rf69.recv(receiveBuffer, &messageLength)) {
-
-      Serial.print("Got a reply: ");
-      Serial.println((char*)receiveBuffer);
-
-	  //signal that a reply has been received
-      Blink(LED, 50, 3);
-    } else {
-      Serial.println("Receive failed");
-    }
-  } else {
-    Serial.println("No reply, is another RFM69 listening?");
-  }
 }
 
 void Blink(byte PIN, byte DELAY_MS, byte loops) {
-  for (byte i=0; i<loops; i++)  {
-    digitalWrite(PIN,HIGH);
-    delay(DELAY_MS);
-    digitalWrite(PIN,LOW);
-    delay(DELAY_MS);
-  }
+	for (byte i = 0; i < loops; i++) {
+		digitalWrite(PIN, HIGH);
+		delay(DELAY_MS);
+		digitalWrite(PIN, LOW);
+		delay(DELAY_MS);
+	}
+
+
+}
+
+void handshake() {
+
+	uint8_t address = manager.thisAddress;
+	uint8_t sendBuffer[RH_RF69_MAX_MESSAGE_LEN];
+	uint8_t messageLength = sizeof(sendBuffer);
+	//we want to send current layer and address for handshake
+	
+
+	//print handshake data being sent 
+	Serial.print("Sending "); Serial.println(sendBuffer);
+
+	// cast as unsigned 8 bit integer and send
+	rf69.send((uint8_t *)sendBuffer, strlen(sendBuffer));
+	rf69.waitPacketSent();
+
+	// Now wait for a reply and store in receive buffer
+	uint8_t receiveBuffer[RH_RF69_MAX_MESSAGE_LEN];
+
+
+	if (rf69.waitAvailableTimeout(500)) {
+		// Should be a reply message for us now 
+		//check that it has been received 
+		if (rf69.recv(receiveBuffer, &messageLength)) {
+
+			Serial.print("Got a reply: ");
+			Serial.println((char*)receiveBuffer);
+
+			//signal that a reply has been received
+			Blink(LED, 50, 3);
+		}
+		else {
+			Serial.println("Receive failed");
+		}
+	}
+	else {
+		Serial.println("No reply, is another RFM69 listening?");
+	}
+
 }
